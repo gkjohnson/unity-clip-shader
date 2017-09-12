@@ -13,6 +13,17 @@ Shader "Clip Plane/Basic"
 
         Pass
         {
+            Cull Off
+
+            Stencil
+            {
+                Comp Always
+                PassFront IncrWrap
+                FailFront IncrWrap
+
+                PassBack DecrWrap
+                FailBack DecrWrap
+            }
 
             CGPROGRAM
             #include "UnityCG.cginc"
