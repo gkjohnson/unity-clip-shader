@@ -5,6 +5,8 @@ Shader "Clip Plane/Basic"
         _Color("Color", Color) = (1,1,1,1)
         _MainTex("Main Texture", 2D) = "white" {}
         _PlaneVector("Plane Vector", Vector) = (0,0,0,0)
+
+        _UseWorldSpace("Use World Space", Float) = 0
     }
 
     SubShader
@@ -40,6 +42,7 @@ Shader "Clip Plane/Basic"
             float4 _MainTex_ST;			// For the Main Tex UV transform
             sampler2D _MainTex;			// Texture used for the line
             float4 _PlaneVector;
+            float _UseWorldSpace;
 
             struct v2f
             {
@@ -53,7 +56,7 @@ Shader "Clip Plane/Basic"
             {
                 v2f o;
                 o.pos = UnityObjectToClipPos(v.vertex);
-                o.worldpos = mul(unity_ObjectToWorld, v.vertex);
+                o.worldpos = lerp(v.vertex, mul(unity_ObjectToWorld, v.vertex), _UseWorldSpace);
                 o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
 
                 float4 norm = mul(unity_ObjectToWorld, v.normal);
