@@ -3,7 +3,7 @@
 [ExecuteInEditMode]
 public class ClippedRenderer : MonoBehaviour {
 
-    const string CLIP_SURFACE_SHADER = "Clip Plane/Surface";
+    const string CLIP_SURFACE_SHADER = "Hidden/Clip Plane/Surface";
     static Mesh _clipSurface;
     static Material _clipSurfaceMat;
     static MaterialPropertyBlock _matPropBlock;
@@ -13,9 +13,6 @@ public class ClippedRenderer : MonoBehaviour {
 
     public Material material = null;
     MeshFilter _meshFilter { get { return GetComponent<MeshFilter>(); } }
-
-    void Awake () {
-    }
 
     void OnEnable()
     {
@@ -28,12 +25,10 @@ public class ClippedRenderer : MonoBehaviour {
             GameObject go = GameObject.CreatePrimitive(PrimitiveType.Quad);
             _clipSurface = go.GetComponent<MeshFilter>().sharedMesh;
             DestroyImmediate(go);
-             
-            // TODO : Create material
         }
 
         if (_clipSurfaceMat == null)
-            _clipSurfaceMat = new Material(Shader.Find(CLIP_SURFACE_SHADER));
+            _clipSurfaceMat = new Material(Shader.Find(CLIP_SURFACE_SHADER)); 
         
         Camera.onPreCull -= Draw;
         Camera.onPreCull += Draw;

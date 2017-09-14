@@ -1,4 +1,4 @@
-Shader "Clip Plane/Surface"
+Shader "Hidden/Clip Plane/Surface"
 {
     Properties
     {
