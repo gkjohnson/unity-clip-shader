@@ -17,8 +17,7 @@ public class ClippedRenderer : MonoBehaviour {
     {
         if (_matPropBlock == null)
             _matPropBlock = new MaterialPropertyBlock();
-
-
+        
         if (_clipSurface == null)
         {
             GameObject go = GameObject.CreatePrimitive(PrimitiveType.Quad);
@@ -28,41 +27,39 @@ public class ClippedRenderer : MonoBehaviour {
 
         if (_clipSurfaceMat == null)
             _clipSurfaceMat = new Material(Shader.Find(CLIP_SURFACE_SHADER)); 
-        
-        Camera.onPreCull -= Draw;
-        Camera.onPreCull += Draw;
     }
 
-    private void OnDisable()
+    private void LateUpdate()
     {
-        Camera.onPreCull -= Draw;
+        Draw(null);
+        Draw(Camera.main);
     }
-
     void Draw(Camera c)
     {
+        // Set shader attributes
         _matPropBlock.SetColor("_Color", material.color);
         _matPropBlock.SetFloat("_UseWorldSpace", useWorldSpace ? 1 : 0);
         Graphics.DrawMesh(_meshFilter.sharedMesh, transform.localToWorldMatrix, material, 0, c, 0, _matPropBlock);
 
-        Vector4 _planeVector = material.GetVector("_PlaneVector");
+        // Get the plane data from the material
+        Vector4 planeVector = material.GetVector("_PlaneVector");
+        Vector3 norm = new Vector3(planeVector.x, planeVector.y, planeVector.z).normalized;
+        float dist = planeVector.w;
 
-        Vector3 norm = new Vector3(_planeVector.x, _planeVector.y, _planeVector.z).normalized;
-        float dist = _planeVector.w;
-
-        // TODO : This should be done in the shader so we
-        // can operate in the "clip space" and not share
-        // a normal across many materials
-        // Or use "DrawMeshNow"
+        // Position the clip surface
+        var t = transform;
+        var p = t.position + norm.normalized * dist - Vector3.Project(t.position, norm.normalized);
+        var r = Quaternion.LookRotation(-new Vector3(norm.x, norm.y, norm.z));
+        
         if (!useWorldSpace)
         {
             norm = transform.localToWorldMatrix * norm;
             dist *= norm.magnitude;
-        }
 
-        var t = transform;
-        var p = t.position + norm.normalized * dist - Vector3.Project(t.position, norm.normalized);
-        var lookvec = -new Vector3(norm.x, norm.y, norm.z);
-        var r = Quaternion.LookRotation(lookvec);
+            r = Quaternion.LookRotation(-new Vector3(norm.x, norm.y, norm.z));
+            p = t.position + norm.normalized * dist;
+        }
+        
         var bounds = _meshFilter.sharedMesh.bounds; // _renderer.bounds;
         var max = Mathf.Max(bounds.max.x * t.localScale.x, bounds.max.y * t.localScale.y, bounds.max.z * t.localScale.z) * 4;
         var s = Vector3.one * max;
