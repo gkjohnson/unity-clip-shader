@@ -34,6 +34,7 @@ public class ClippedRenderer : MonoBehaviour {
         Draw(null);
         Draw(Camera.main);
     }
+
     void Draw(Camera c)
     {
         // Set shader attributes

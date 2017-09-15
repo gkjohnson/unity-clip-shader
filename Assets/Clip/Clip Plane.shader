@@ -4,9 +4,9 @@ Shader "Clip Plane/Basic"
     {
         _Color("Color", Color) = (1,1,1,1)
         _MainTex("Main Texture", 2D) = "white" {}
-        _PlaneVector("Plane Vector", Vector) = (0,0,0,0)
 
-        _UseWorldSpace("Use World Space", Float) = 0
+        [MaterialToggle] _UseWorldSpace("Use World Space", Float) = 0
+        _PlaneVector("Plane Vector", Vector) = (0,0,0,0)
     }
 
     SubShader
