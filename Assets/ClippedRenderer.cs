@@ -60,11 +60,11 @@ public class ClippedRenderer : MonoBehaviour {
         }
 
         var t = transform;
-        var p = t.position + norm.normalized * dist;
+        var p = t.position + norm.normalized * dist - Vector3.Project(t.position, norm.normalized);
         var lookvec = -new Vector3(norm.x, norm.y, norm.z);
         var r = Quaternion.LookRotation(lookvec);
         var bounds = _meshFilter.sharedMesh.bounds; // _renderer.bounds;
-        var max = Mathf.Max(bounds.max.x * t.localScale.x, bounds.max.y * t.localScale.y, bounds.max.z * t.localScale.z) * 2;
+        var max = Mathf.Max(bounds.max.x * t.localScale.x, bounds.max.y * t.localScale.y, bounds.max.z * t.localScale.z) * 4;
         var s = Vector3.one * max;
         
         Graphics.DrawMesh(_clipSurface, Matrix4x4.TRS(p, r, s), _clipSurfaceMat, 0, c, 0, _matPropBlock);

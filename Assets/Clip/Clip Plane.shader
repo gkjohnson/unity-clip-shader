@@ -50,14 +50,40 @@ Shader "Clip Plane/Basic"
                 float4 col      : COLOR;
                 float2 uv		: TEXCOORD0;
                 float4 worldpos : TEXCOORD1;
+                float clip      : TEXCOORD2;
             };
 
             v2f vert(appdata_base v)
             {
                 v2f o;
                 o.pos = UnityObjectToClipPos(v.vertex);
-                o.worldpos = lerp(v.vertex, mul(unity_ObjectToWorld, v.vertex), _UseWorldSpace);
+                o.worldpos = mul(unity_ObjectToWorld, v.vertex);
                 o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+
+
+
+                if (_UseWorldSpace > 0.5f)
+                {
+                    float3 wp = mul(unity_ObjectToWorld, v.vertex).xyz;
+                    float3 norm = normalize(_PlaneVector.xyz);
+                    float dist = _PlaneVector.w;
+                    o.clip = dist - dot(wp, norm);
+                }
+                else
+                {
+                    o.clip = 100;
+
+                    float3 wp = mul(unity_ObjectToWorld, v.vertex).xyz - mul(unity_ObjectToWorld, float4(0,0,0,1)).xyz;
+                    float4 pnorm = float4(normalize(_PlaneVector.xyz), 0);
+                    float dist = _PlaneVector.w;
+                    pnorm = mul(unity_ObjectToWorld, pnorm);
+                    dist *= length(pnorm);
+
+                    o.clip = dist - dot(wp, normalize(pnorm));
+                }
+
+
+
 
                 float4 norm = mul(unity_ObjectToWorld, v.normal);
                 float3 normalDirection = normalize(norm.xyz);
@@ -71,9 +97,7 @@ Shader "Clip Plane/Basic"
 
             float4 frag(v2f i) : COLOR
             {
-                float3 norm = normalize(_PlaneVector.xyz);
-                float dist = _PlaneVector.w;
-                clip(dist - dot(i.worldpos.xyz, norm));
+                clip(i.clip);
 
                 float4 col = _Color * tex2D(_MainTex, i.uv);
                 return col * i.col;
