@@ -45,7 +45,7 @@ Shader "Hidden/Clip Plane/Surface"
                 float3 normalDirection = normalize(norm.xyz);
                 float4 AmbientLight = UNITY_LIGHTMODEL_AMBIENT;
                 float4 LightDirection = normalize(_WorldSpaceLightPos0);
-                float4 DiffuseLight = saturate(dot(LightDirection, -normalDirection))*_LightColor0;
+                float4 DiffuseLight = saturate(dot(LightDirection, normalDirection))*_LightColor0;
                 o.col = float4(AmbientLight + DiffuseLight);
 
                 return o;
