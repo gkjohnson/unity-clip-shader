@@ -1,4 +1,6 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
+
 #if UNITY_EDITOR
 using UnityEngine.Rendering;
 #endif
@@ -6,15 +8,23 @@ using UnityEngine.Rendering;
 [ExecuteInEditMode]
 public class ClippedRenderer : MonoBehaviour {
 
+    // Static variables
     const string CLIP_SURFACE_SHADER = "Hidden/Clip Plane/Surface";
     static Mesh _clipSurface;
     static Material _clipSurfaceMat;
 
+    // For Drawing
     public bool useWorldSpace = false;
     public Material material = null;
     MaterialPropertyBlock _matPropBlock;
     CommandBuffer _commandBuffer;
-    MeshFilter _meshFilter { get { return GetComponent<MeshFilter>(); } }
+    CommandBuffer _lightingCommandBuffer;
+    MeshFilter meshFilter { get { return GetComponent<MeshFilter>(); } }
+
+    // For Shadows
+    public Light[] shadowCastingLights = new Light[0];
+    public bool castShadows = true;
+    List<Light> _prevLights = new List<Light>();
 
     #region Life Cycle
     void OnEnable()
@@ -25,11 +35,36 @@ public class ClippedRenderer : MonoBehaviour {
 
         if (_commandBuffer == null) _commandBuffer = new CommandBuffer();
 
+        if (_lightingCommandBuffer == null) _lightingCommandBuffer = new CommandBuffer();
+
         if (_clipSurface == null)
         {
             GameObject go = GameObject.CreatePrimitive(PrimitiveType.Quad);
             _clipSurface = go.GetComponent<MeshFilter>().sharedMesh;
             DestroyImmediate(go);
+        }
+    }
+
+    // Here we update every command buffer every frame to update the shadows
+    // for lighting
+    void LateUpdate()
+    {
+        for (int i = 0; i < _prevLights.Count; i++) _prevLights[i].RemoveCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
+        _prevLights.Clear();
+        
+        if (castShadows)
+        {
+            _matPropBlock.SetColor("_Color", material.color);
+            _matPropBlock.SetFloat("_UseWorldSpace", useWorldSpace ? 1 : 0);
+
+            _lightingCommandBuffer.Clear();
+            _lightingCommandBuffer.DrawMesh(meshFilter.sharedMesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
+
+            for (int i = 0; i < shadowCastingLights.Length; i++)
+            {
+                shadowCastingLights[i].AddCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
+                _prevLights.Add(shadowCastingLights[i]);
+            }
         }
     }
 
@@ -57,7 +92,7 @@ public class ClippedRenderer : MonoBehaviour {
         // Set shader attributes
         _matPropBlock.SetColor("_Color", material.color);
         _matPropBlock.SetFloat("_UseWorldSpace", useWorldSpace ? 1 : 0);
-        _commandBuffer.DrawMesh(_meshFilter.sharedMesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
+        _commandBuffer.DrawMesh(meshFilter.sharedMesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
 
         // Create the clip plane position here because it may have moved between lateUpdate and now
         // TODO: We could cache it between draws, though, and only update it if the vector has changed
@@ -80,7 +115,7 @@ public class ClippedRenderer : MonoBehaviour {
             p = t.position + norm.normalized * dist;
         }
         
-        var bounds = _meshFilter.sharedMesh.bounds;
+        var bounds = meshFilter.sharedMesh.bounds;
         var max = Mathf.Max(bounds.max.x * t.localScale.x, bounds.max.y * t.localScale.y, bounds.max.z * t.localScale.z) * 4;
         var s = Vector3.one * max;
         _commandBuffer.DrawMesh(_clipSurface, Matrix4x4.TRS(p, r, s), _clipSurfaceMat, 0, 0, _matPropBlock);
