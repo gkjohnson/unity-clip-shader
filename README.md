@@ -1,5 +1,5 @@
 # unity-clip-shader
-![example](./Docs/example.gif)
+![example](./Docs/example-image.gif)
 
 Unity shader and scripts for rendering solid geometry clipped by a plane
 
