@@ -1,9 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-
-#if UNITY_EDITOR
 using UnityEngine.Rendering;
-#endif
 
 [ExecuteInEditMode]
 public class ClippedRenderer : MonoBehaviour {
@@ -14,16 +11,16 @@ public class ClippedRenderer : MonoBehaviour {
     static Material _clipSurfaceMat;
 
     // For Drawing
-    public bool useWorldSpace = false;
-    public Material material = null;
+    public bool useWorldSpace = false;      // whether or not the clip plane variable should be used in world space or local space
+    public Material material = null;        // the material to render with
     MaterialPropertyBlock _matPropBlock;
     CommandBuffer _commandBuffer;
     CommandBuffer _lightingCommandBuffer;
     MeshFilter meshFilter { get { return GetComponent<MeshFilter>(); } }
 
     // For Shadows
-    public Light[] shadowCastingLights = new Light[0];
-    public bool castShadows = true;
+    public Light[] shadowCastingLights;     // the lights to render shadows to
+    public bool castShadows = true;         // whether or not this object should render shadows
     List<Light> _prevLights = new List<Light>();
 
     #region Life Cycle
@@ -47,19 +44,25 @@ public class ClippedRenderer : MonoBehaviour {
 
     // Here we update every command buffer every frame to update the shadows
     // for lighting
+    // TODO: This shouldn't happen every frame. Maybe it only needs to happen once at the beginning with
+    // a public function to force an update? Or it updates every frame in editor while not playing?
     void LateUpdate()
     {
+        // clear all the previous shadow draw bufers
         for (int i = 0; i < _prevLights.Count; i++) _prevLights[i].RemoveCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
         _prevLights.Clear();
         
-        if (castShadows)
+        // If we're going to cash shadows
+        if (castShadows && shadowCastingLights != null)
         {
+            // regenerate the command buffer
             _matPropBlock.SetColor("_Color", material.color);
             _matPropBlock.SetFloat("_UseWorldSpace", useWorldSpace ? 1 : 0);
 
             _lightingCommandBuffer.Clear();
             _lightingCommandBuffer.DrawMesh(meshFilter.sharedMesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
 
+            // add the shadow drawing
             for (int i = 0; i < shadowCastingLights.Length; i++)
             {
                 shadowCastingLights[i].AddCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
@@ -76,17 +79,12 @@ public class ClippedRenderer : MonoBehaviour {
         Draw()
 #endif
     }
-
-    private void OnDestroy()
-    {
-#if !UNITY_EDITOR
-        Destroy(material);
-#endif
-    }
 #endregion
 
     void Draw()
     {
+        // TODO: We should only have to clear the commandbuffer
+        // if something breaking has changed! Same with the shadow commandbuffer
         _commandBuffer.Clear();
 
         // Set shader attributes
