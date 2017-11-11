@@ -32,3 +32,11 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
+
+# Other
+/Assets/ShaderForge/
+/Assets/ShaderForge.meta
+/Assets/AmplifyShaderEditor/
+/Assets/AmplifyShaderEditor.meta
+/Assets/AssetStoreTools/
+/Assets/AssetStoreTools.meta
