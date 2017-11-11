@@ -32,6 +32,7 @@ Shader "Clip Plane/Basic"
 
             CGPROGRAM
             #include "UnityCG.cginc"
+            #include "./Clip Plane Functions.cginc"
             #pragma vertex vert
             #pragma fragment frag
 
@@ -59,15 +60,7 @@ Shader "Clip Plane/Basic"
 
                 // Calculate clip value
 				float3 wp = mul(unity_ObjectToWorld, v.vertex).xyz;
-                float3 pnorm = normalize(_PlaneVector.xyz);
-                float dist = _PlaneVector.w;
-
-                // Use World Space Lerps
-                pnorm = lerp(mul(unity_ObjectToWorld, pnorm), pnorm, _UseWorldSpace);
-                dist = lerp(dist * length(pnorm), dist, _UseWorldSpace);
-                wp -= lerp(mul(unity_ObjectToWorld, float4(0, 0, 0, 1)).xyz, float3(0, 0, 0), _UseWorldSpace);
-                
-                o.doclip = dist - dot(wp, normalize(pnorm));
+				o.doclip = isClipped(_PlaneVector, wp, _UseWorldSpace);
                 
                 // Lighting 
                 float4 norm = mul(unity_ObjectToWorld, v.normal);
