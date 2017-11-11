@@ -32,7 +32,7 @@ Shader "Hidden/Clip Plane/Surface"
 
             struct v2f
             {
-                float4 pos		: POSITION;
+                float4 pos      : POSITION;
                 float4 col      : COLOR;
             };
 

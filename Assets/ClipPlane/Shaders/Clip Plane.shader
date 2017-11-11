@@ -38,16 +38,16 @@ Shader "Clip Plane/Basic"
             uniform fixed4 _LightColor0;
 
             float4 _Color;
-            float4 _MainTex_ST;			// For the Main Tex UV transform
-            sampler2D _MainTex;			// Texture used for the line
+            float4 _MainTex_ST;         // For the Main Tex UV transform
+            sampler2D _MainTex;         // Texture used for the line
             float4 _PlaneVector;
             float _UseWorldSpace;
 
             struct v2f
             {
-                float4 pos		: POSITION;
+                float4 pos      : POSITION;
                 float4 col      : COLOR;
-                float2 uv		: TEXCOORD0;
+                float2 uv       : TEXCOORD0;
                 float doclip    : TEXCOORD1;
             };
 
