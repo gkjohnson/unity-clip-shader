@@ -58,16 +58,16 @@ Shader "Clip Plane/Basic"
                 o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
 
                 // Calculate clip value
-                float4 pnorm = float4(normalize(_PlaneVector.xyz), 0);
+				float3 wp = mul(unity_ObjectToWorld, v.vertex).xyz;
+                float3 pnorm = normalize(_PlaneVector.xyz);
                 float dist = _PlaneVector.w;
-                float3 wp = mul(unity_ObjectToWorld, v.vertex).xyz;
 
                 // Use World Space Lerps
                 pnorm = lerp(mul(unity_ObjectToWorld, pnorm), pnorm, _UseWorldSpace);
                 dist = lerp(dist * length(pnorm), dist, _UseWorldSpace);
                 wp -= lerp(mul(unity_ObjectToWorld, float4(0, 0, 0, 1)).xyz, float3(0, 0, 0), _UseWorldSpace);
                 
-                o.doclip = dist - dot(wp, normalize(pnorm.xyz));
+                o.doclip = dist - dot(wp, normalize(pnorm));
                 
                 // Lighting 
                 float4 norm = mul(unity_ObjectToWorld, v.normal);
