@@ -11,6 +11,7 @@ public class ClippedRenderer : MonoBehaviour {
     static Material _clipSurfaceMat;
 
     // For Drawing
+    // TODO: Use clip plane direction value here, too
     public bool useWorldSpace = false;      // whether or not the clip plane variable should be used in world space or local space
     public Material material = null;        // the material to render with
     MaterialPropertyBlock _matPropBlock;
