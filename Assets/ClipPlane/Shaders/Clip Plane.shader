@@ -31,6 +31,7 @@ Shader "Clip Plane/Basic"
             }
 
             CGPROGRAM
+            #pragma target 3.0
             #include "UnityCG.cginc"
             #include "./Clip Plane Functions.cginc"
             #pragma vertex vert

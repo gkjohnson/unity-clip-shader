@@ -21,8 +21,8 @@ Shader "Hidden/Clip Plane/Surface"
             }
             
             CGPROGRAM
+            #pragma target 3.0
             #include "UnityCG.cginc"
-            #pragma target 5.0
             #pragma vertex vert
             #pragma fragment frag
 
