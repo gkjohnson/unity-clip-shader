@@ -11,7 +11,8 @@ public class ClippedRenderer : MonoBehaviour {
     static Material _clipSurfaceMat;
 
     // Private variables
-    bool _sharePlaneProperties = true;
+    bool _shareMaterialProperties = true;
+    bool _dirty = false;
 
     // For Drawing
     public Material material = null;            // the material to render with
@@ -26,12 +27,12 @@ public class ClippedRenderer : MonoBehaviour {
 
     // Getters
     public bool shareMaterialProperties {
-        get { return _sharePlaneProperties; } 
+        get { return _shareMaterialProperties; } 
         set {
             Vector4 pv = GetPlaneVector();
             bool uws = GetUseWorldSpace();
 
-            _sharePlaneProperties = value;
+            _shareMaterialProperties = value;
             _matPropBlock.Clear();
 
             planeVector = pv;
@@ -105,8 +106,7 @@ public class ClippedRenderer : MonoBehaviour {
         
         // If we're going to cast shadows
         if (castShadows && shadowCastingLights != null) {
-            _lightingCommandBuffer.Clear();
-            _lightingCommandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
+            UpdateCommandBuffers();
 
             // add the shadow drawing
             for (int i = 0; i < shadowCastingLights.Length; i++) {
@@ -133,31 +133,34 @@ public class ClippedRenderer : MonoBehaviour {
         dist = dist ?? currVec.w;
 
         Vector4 newVec = new Vector4(normal.Value.x, normal.Value.y, normal.Value.z, dist.Value);
-        if (_sharePlaneProperties) material.SetVector("_PlaneVector", newVec);
+        if (_shareMaterialProperties) material.SetVector("_PlaneVector", newVec);
         else _matPropBlock.SetVector("_PlaneVector", newVec);
+
+        _dirty = true;
     }
 
     Vector4 GetPlaneVector() {
-        return _sharePlaneProperties ? material.GetVector("_PlaneVector") : _matPropBlock.GetVector("_PlaneVector");
+        return _shareMaterialProperties ? material.GetVector("_PlaneVector") : _matPropBlock.GetVector("_PlaneVector");
     }
     
     void SetUseWorldSpace(bool ws) {
-        if (_sharePlaneProperties) material.SetFloat("_UseWorldSpace", ws ? 1 : -1);
-        else _matPropBlock.SetFloat("_UseWorldSpace", ws ? 1 : -1);
+        if (_shareMaterialProperties) material.SetFloat("_UseWorldSpace", ws ? 1 : 0);
+        else _matPropBlock.SetFloat("_UseWorldSpace", ws ? 1 : 0);
+
+        _dirty = true;
     }
 
     bool GetUseWorldSpace() {
-        return (_sharePlaneProperties ? material.GetFloat("_UseWorldSpace") : _matPropBlock.GetFloat("_UseWorldSpace")) == 1;
+        return (_shareMaterialProperties ? material.GetFloat("_UseWorldSpace") : _matPropBlock.GetFloat("_UseWorldSpace")) == 1;
     }
     #endregion
 
     #region Visuals
-    void Draw()
-    {
-        if (mesh == null) return;
+    // Update the command buffers if something has changed
+    void UpdateCommandBuffers() {
+        if (!_dirty) return;
 
-        // TODO: We should only have to clear the commandbuffer
-        // if something breaking has changed! Same with the shadow commandbuffer
+        // Update Main CommandBuffer
         _commandBuffer.Clear();
 
         // Set shader attributes
@@ -174,7 +177,7 @@ public class ClippedRenderer : MonoBehaviour {
         var t = transform;
         var p = t.position + norm * dist - Vector3.Project(t.position, norm);
         var r = Quaternion.LookRotation(-new Vector3(norm.x, norm.y, norm.z));
-        
+
         if (!useWorldSpace)
         {
             norm = transform.localToWorldMatrix * norm;
@@ -183,12 +186,23 @@ public class ClippedRenderer : MonoBehaviour {
             r = Quaternion.LookRotation(-new Vector3(norm.x, norm.y, norm.z));
             p = t.position + norm.normalized * dist;
         }
-        
+
         var bounds = mesh.bounds;
         var max = Mathf.Max(bounds.max.x * t.localScale.x, bounds.max.y * t.localScale.y, bounds.max.z * t.localScale.z) * 4;
         var s = Vector3.one * max;
         _commandBuffer.DrawMesh(_clipSurface, Matrix4x4.TRS(p, r, s), _clipSurfaceMat, 0, 0, _matPropBlock);
-        
+
+
+        // Update Shadow CommandBuffer
+        _lightingCommandBuffer.Clear();
+        _lightingCommandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
+    }
+
+    void Draw()
+    {
+        if (mesh == null) return;
+
+        UpdateCommandBuffers();
         Graphics.ExecuteCommandBuffer(_commandBuffer);
     }
 
