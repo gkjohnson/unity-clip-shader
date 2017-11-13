@@ -12,7 +12,7 @@ public class ClippedRenderer : MonoBehaviour {
 
     // Private variables
     bool _shareMaterialProperties = true;
-    bool _dirty = false;
+    bool _dirty = true;
 
     // For Drawing
     public Material material = null;            // the material to render with
