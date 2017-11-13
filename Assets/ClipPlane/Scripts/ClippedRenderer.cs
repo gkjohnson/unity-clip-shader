@@ -25,13 +25,21 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     CommandBuffer _lightingCommandBuffer;
 
     // For Shadows
-    public Light[] shadowCastingLights;     // the lights to render shadows to
-    public bool castShadows = true;         // whether or not this object should render shadows
-    List<Light> _shadowingLights = new List<Light>();
+    [SerializeField]
+    List<Light> _shadowCastingLights;     // the lights to render shadows to
+    bool _castShadows = true;         // whether or not this object should render shadows
 
     // Getters
     MaterialPropertyBlock matPropBlock {
         get { return _matPropBlock = _matPropBlock == null ? new MaterialPropertyBlock() : _matPropBlock; } 
+    }
+
+    public bool castShadows {
+        get { return _castShadows; }
+        set {
+            _castShadows = value;
+            UpdateShadowBuffers();
+        }
     }
 
     public bool shareMaterialProperties {
@@ -102,30 +110,16 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     }
 
     // clear shadows on disable
-    private void OnDisable() {
-        ClearShadowBuffers();
+    void OnDisable() {
+        UpdateShadowBuffers();
     }
 
-    // Here we update every command buffer every frame to update the shadows
-    // for lighting
-    // TODO: This shouldn't happen every frame. Maybe it only needs to happen once at the beginning with
-    // a public function to force an update? Or it updates every frame in editor while not playing?
-    void LateUpdate() {
-        ClearShadowBuffers();
-
-        // If we're going to cast shadows
-        if (castShadows && shadowCastingLights != null) {
-            UpdateCommandBuffers();
-
-            // add the shadow drawing
-            for (int i = 0; i < shadowCastingLights.Length; i++) {
-                shadowCastingLights[i].AddCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
-                _shadowingLights.Add(shadowCastingLights[i]);
-            }
-        }
+    void OnWillRenderObject() {
+        if (_dirty) UpdateCommandBuffers();
+        _dirty = false;
     }
 
-    private void OnRenderObject() {
+    void OnRenderObject() {
 #if UNITY_EDITOR
         if (Camera.current.name != "Preview Scene Camera") Draw();
 #else
@@ -165,17 +159,43 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     }
     #endregion
 
-    #region Visuals
-    // Clears the command buffers for the lights casting shadows
-    void ClearShadowBuffers() {
-        for (int i = 0; i < _shadowingLights.Count; i++) _shadowingLights[i].RemoveCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
-        _shadowingLights.Clear();
+    #region Shadows
+    public void SetLights(IEnumerable<Light> lights) {
+        ClearLights();
+        _shadowCastingLights.AddRange(lights);
+        UpdateShadowBuffers();
     }
 
+    public void ClearLights() {
+        ClearShadowBuffers();
+        _shadowCastingLights.Clear();
+    }
+
+    // Update the command Buffers if needed
+    void UpdateShadowBuffers() {
+        ClearShadowBuffers();
+        if (enabled && _castShadows) ApplyShadowBuffers();
+    }
+    
+    // Add the shadow 
+    void ApplyShadowBuffers() {
+        UpdateCommandBuffers();
+
+        // add the shadow drawing
+        for (int i = 0; i < _shadowCastingLights.Count; i++) {
+            _shadowCastingLights[i].AddCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
+        }
+    }
+
+    // Clears the command buffers for the lights casting shadows
+    void ClearShadowBuffers() {
+        for (int i = 0; i < _shadowCastingLights.Count; i++) _shadowCastingLights[i].RemoveCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
+    }
+    #endregion
+
+    #region Visuals
     // Update the command buffers if something has changed
     void UpdateCommandBuffers() {
-        if (!_dirty) return;
-
         // Update Main CommandBuffer
         _commandBuffer.Clear();
 
@@ -211,17 +231,13 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     }
 
     // Drwa the current target
-    void Draw()
-    {
+    void Draw() {
         if (mesh == null) return;
-
-        UpdateCommandBuffers();
         Graphics.ExecuteCommandBuffer(_commandBuffer);
     }
 
     // Visualize the clip plane normal and position
-    void OnDrawGizmos()
-    {
+    void OnDrawGizmos() {
         if (mesh == null) return;
         
         Vector3 norm = planeNormal;
@@ -260,7 +276,6 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     void ISerializationCallbackReceiver.OnBeforeSerialize() {
         serializable_planeVector = planeVector;
         serializable_useWorldSpace = useWorldSpace;
-
     }
 
     void ISerializationCallbackReceiver.OnAfterDeserialize() {
