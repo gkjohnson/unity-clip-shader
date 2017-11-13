@@ -157,8 +157,13 @@ public class ClippedRenderer : MonoBehaviour {
         Vector3 norm = planeNormal;
         Vector3 point = planePoint;
 
-        if (!useWorldSpace)
-        {
+        if (useWorldSpace) {
+
+            float projDist = Vector3.Dot(norm, transform.position);
+            Vector3 delta = transform.position - norm * projDist;
+            point += delta;
+
+        } else {
             Gizmos.matrix = transform.localToWorldMatrix;
         }
 
