@@ -12,17 +12,34 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     const string USE_WORLD_SPACE_PROPERTY = "_UseWorldSpace";
     const string PLANE_VECTOR_PROPERTY = "_PlaneVector";
     static Mesh _clipSurface;
-    static Material _clipSurfaceMat;
 
     // Private variables
     [SerializeField]
     bool _shareMaterialProperties = true;
+    bool _dirty = true;
 
     // For Drawing
+    [SerializeField]
+    Material _clipMaterial;
+    Material _standinClipMaterial;
+
     MaterialPropertyBlock _matPropBlock;
     CommandBuffer _commandBuffer;
 
     // Getters
+    public Material clipMaterial {
+        get {
+            if (_clipMaterial == null) _standinClipMaterial = new Material(Shader.Find(CLIP_SURFACE_SHADER));            
+            return _clipMaterial != null ? _clipMaterial : _standinClipMaterial;
+        }
+
+        set {
+            _dirty = true;
+            if (value != null && _standinClipMaterial != null) Destroy(_standinClipMaterial);
+            _clipMaterial = value;
+        }
+    }
+
     Mesh clipSurface {
         get {
             if (_clipSurface == null) {
@@ -100,17 +117,21 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     #region Life Cycle
 
     void OnEnable() {
+        _dirty = true;
         ApplySerializedValues();
-
-        if (_clipSurfaceMat == null) _clipSurfaceMat = new Material(Shader.Find(CLIP_SURFACE_SHADER));
         if (_commandBuffer == null) _commandBuffer = new CommandBuffer();
+    }
 
+    private void OnDisable() {
+        if (renderer.shadowCastingMode == ShadowCastingMode.ShadowsOnly) renderer.shadowCastingMode = ShadowCastingMode.On;
     }
 
     // clear shadows on disable
     void OnRenderObject() {
         UpdateCommandBuffers();
-        
+        if (_standinClipMaterial) _standinClipMaterial.color = material.color;
+        if (renderer.shadowCastingMode != ShadowCastingMode.Off) renderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+
 #if UNITY_EDITOR
         if (Camera.current.name != "Preview Scene Camera") Draw();
 #else
@@ -157,11 +178,13 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     #region Visuals
     // Update the command buffers if something has changed
     void UpdateCommandBuffers() {
+        if (!_dirty) return;
+        _dirty = false;
+
         // Update Main CommandBuffer
         _commandBuffer.Clear();
 
         // Set shader attributes
-        matPropBlock.SetColor("_Color", material.color);
         _commandBuffer.DrawRenderer(renderer, material, 0, 0);
 
         Vector3 norm = planeNormal;
@@ -184,7 +207,7 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
         var bounds = mesh.bounds;
         var max = Mathf.Max(bounds.max.x * t.localScale.x, bounds.max.y * t.localScale.y, bounds.max.z * t.localScale.z) * 4;
         var s = Vector3.one * max;
-        _commandBuffer.DrawMesh(clipSurface, Matrix4x4.TRS(p, r, s), _clipSurfaceMat, 0, 0, matPropBlock);
+        _commandBuffer.DrawMesh(clipSurface, Matrix4x4.TRS(p, r, s), clipMaterial, 0, 0, matPropBlock);
     }
 
     // Drwa the current target
@@ -192,7 +215,9 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
         if (mesh == null) return;
         Graphics.ExecuteCommandBuffer(_commandBuffer);
     }
+    #endregion
 
+    #region Gizmos
     // Visualize the clip plane normal and position
     void OnDrawGizmosSelected() {
         if (mesh == null) return;
