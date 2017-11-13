@@ -8,6 +8,8 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
 
     // Static variables
     const string CLIP_SURFACE_SHADER = "Hidden/Clip Plane/Surface";
+    const string USE_WORLD_SPACE_PROPERTY = "_UseWorldSpace";
+    const string PLANE_VECTOR_PROPERTY = "_PlaneVector";
     static Mesh _clipSurface;
     static Material _clipSurfaceMat;
 
@@ -25,7 +27,7 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     // For Shadows
     public Light[] shadowCastingLights;     // the lights to render shadows to
     public bool castShadows = true;         // whether or not this object should render shadows
-    List<Light> _prevLights = new List<Light>();
+    List<Light> _shadowingLights = new List<Light>();
 
     // Getters
     MaterialPropertyBlock matPropBlock {
@@ -99,15 +101,18 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
         }
     }
 
+    // clear shadows on disable
+    private void OnDisable() {
+        ClearShadowBuffers();
+    }
+
     // Here we update every command buffer every frame to update the shadows
     // for lighting
     // TODO: This shouldn't happen every frame. Maybe it only needs to happen once at the beginning with
     // a public function to force an update? Or it updates every frame in editor while not playing?
     void LateUpdate() {
-        // clear all the previous shadow draw bufers
-        for (int i = 0; i < _prevLights.Count; i++) _prevLights[i].RemoveCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
-        _prevLights.Clear();
-        
+        ClearShadowBuffers();
+
         // If we're going to cast shadows
         if (castShadows && shadowCastingLights != null) {
             UpdateCommandBuffers();
@@ -115,7 +120,7 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
             // add the shadow drawing
             for (int i = 0; i < shadowCastingLights.Length; i++) {
                 shadowCastingLights[i].AddCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
-                _prevLights.Add(shadowCastingLights[i]);
+                _shadowingLights.Add(shadowCastingLights[i]);
             }
         }
     }
@@ -138,29 +143,35 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
         dist = dist ?? currVec.w;
 
         Vector4 newVec = new Vector4(normal.Value.x, normal.Value.y, normal.Value.z, dist.Value);
-        if (_shareMaterialProperties) material.SetVector("_PlaneVector", newVec);
-        else matPropBlock.SetVector("_PlaneVector", newVec);
+        if (_shareMaterialProperties) material.SetVector(PLANE_VECTOR_PROPERTY, newVec);
+        else matPropBlock.SetVector(PLANE_VECTOR_PROPERTY, newVec);
 
         _dirty = true;
     }
 
     Vector4 GetPlaneVector() {
-        return _shareMaterialProperties ? material.GetVector("_PlaneVector") : matPropBlock.GetVector("_PlaneVector");
+        return _shareMaterialProperties ? material.GetVector(PLANE_VECTOR_PROPERTY) : matPropBlock.GetVector(PLANE_VECTOR_PROPERTY);
     }
     
     void SetUseWorldSpace(bool ws) {
-        if (_shareMaterialProperties) material.SetFloat("_UseWorldSpace", ws ? 1 : 0);
-        else matPropBlock.SetFloat("_UseWorldSpace", ws ? 1 : 0);
+        if (_shareMaterialProperties) material.SetFloat(USE_WORLD_SPACE_PROPERTY, ws ? 1 : 0);
+        else matPropBlock.SetFloat(USE_WORLD_SPACE_PROPERTY, ws ? 1 : 0);
 
         _dirty = true;
     }
 
     bool GetUseWorldSpace() {
-        return (_shareMaterialProperties ? material.GetFloat("_UseWorldSpace") : matPropBlock.GetFloat("_UseWorldSpace")) == 1;
+        return (_shareMaterialProperties ? material.GetFloat(USE_WORLD_SPACE_PROPERTY) : matPropBlock.GetFloat(USE_WORLD_SPACE_PROPERTY)) == 1;
     }
     #endregion
 
     #region Visuals
+    // Clears the command buffers for the lights casting shadows
+    void ClearShadowBuffers() {
+        for (int i = 0; i < _shadowingLights.Count; i++) _shadowingLights[i].RemoveCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
+        _shadowingLights.Clear();
+    }
+
     // Update the command buffers if something has changed
     void UpdateCommandBuffers() {
         if (!_dirty) return;
