@@ -10,6 +10,25 @@ public class ClippedRenderer : MonoBehaviour {
     static Mesh _clipSurface;
     static Material _clipSurfaceMat;
 
+    // For Drawing
+    public bool useWorldSpace = false;          // whether or not the clip plane variable should be used in world space or local space
+
+    // TODO: the API should enforce that this is normalized
+    public Vector4 planeVector = Vector4.zero;  // xyz is the normal, w is the distance from 0,0,0
+    public Material material = null;            // the material to render with
+    MaterialPropertyBlock _matPropBlock;
+    CommandBuffer _commandBuffer;
+    CommandBuffer _lightingCommandBuffer;
+    Mesh mesh
+    {
+        get
+        {
+            var mf = GetComponent<MeshFilter>();
+            if (mf) return mf.sharedMesh;
+            else return null;
+        }
+    }
+
     // Getters
     public Vector3 planeNormal {
         get { return new Vector3(planeVector.x, planeVector.y, planeVector.z); }
@@ -27,22 +46,7 @@ public class ClippedRenderer : MonoBehaviour {
         set { planeVector.w = Vector3.Dot(planeNormal, value); }
     }
 
-    // For Drawing
-    public bool useWorldSpace = false;          // whether or not the clip plane variable should be used in world space or local space
 
-    // TODO: the API should enforce that this is normalized
-    public Vector4 planeVector = Vector4.zero;  // xyz is the normal, w is the distance from 0,0,0
-    public Material material = null;            // the material to render with
-    MaterialPropertyBlock _matPropBlock;
-    CommandBuffer _commandBuffer;
-    CommandBuffer _lightingCommandBuffer;
-    Mesh mesh {
-        get {
-            var mf = GetComponent<MeshFilter>();
-            if (mf) return mf.sharedMesh;
-            else return null;
-        }
-    }
 
     // For Shadows
     public Light[] shadowCastingLights;     // the lights to render shadows to
@@ -105,6 +109,33 @@ public class ClippedRenderer : MonoBehaviour {
 #else
         Draw()
 #endif
+    }
+    #endregion
+
+    #region Material Helpers
+    bool _sharePlaneProperties = false;
+
+    void SetPlaneVector(Vector3? normal = null, float? dist = null) {
+        Vector4 currVec = GetPlaneVector();
+        normal = (normal ?? new Vector3(currVec.x, currVec.y, currVec.z)).normalized;
+        dist = currVec.w;
+
+        Vector4 newVec = new Vector4(normal.Value.x, normal.Value.y, normal.Value.z, dist.Value);
+        if (_sharePlaneProperties) material.SetVector("_PlaneVector", newVec);
+        else _matPropBlock.SetVector("_PlaneVector", newVec);
+    }
+
+    Vector4 GetPlaneVector() {
+        return _sharePlaneProperties ? material.GetVector("_PlaneVector") : _matPropBlock.GetVector("_PlaneVector");
+    }
+    
+    void SetUseWorldSpace(bool ws) {
+        if (_sharePlaneProperties) material.SetFloat("_UseWorldSpace", ws ? 1 : -1);
+        else _matPropBlock.SetFloat("_UseWorldSpace", ws ? 1 : -1);
+    }
+
+    bool GetUseWorldSpace() {
+        return (_sharePlaneProperties ? material.GetFloat("_UseWorldSpace") : _matPropBlock.GetFloat("_UseWorldSpace")) == 1;
     }
     #endregion
 
