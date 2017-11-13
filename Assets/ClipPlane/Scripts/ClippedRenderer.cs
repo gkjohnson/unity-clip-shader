@@ -131,7 +131,7 @@ public class ClippedRenderer : MonoBehaviour {
             dist *= norm.magnitude;
 
             r = Quaternion.LookRotation(-new Vector3(norm.x, norm.y, norm.z));
-            p = t.position + norm * dist;
+            p = t.position + norm.normalized * dist;
         }
         
         var bounds = meshFilter.sharedMesh.bounds;
