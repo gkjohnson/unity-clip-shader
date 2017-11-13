@@ -10,42 +10,68 @@ public class ClippedRenderer : MonoBehaviour {
     static Mesh _clipSurface;
     static Material _clipSurfaceMat;
 
+    // Private variables
+    bool _sharePlaneProperties = false;
+
+
     // For Drawing
-    public bool useWorldSpace = false;          // whether or not the clip plane variable should be used in world space or local space
+    public bool _useWorldSpace = false;          // whether or not the clip plane variable should be used in world space or local space
 
     // TODO: the API should enforce that this is normalized
-    public Vector4 planeVector = Vector4.zero;  // xyz is the normal, w is the distance from 0,0,0
+    public Vector4 _planeVector = Vector4.zero;  // xyz is the normal, w is the distance from 0,0,0
     public Material material = null;            // the material to render with
     MaterialPropertyBlock _matPropBlock;
     CommandBuffer _commandBuffer;
     CommandBuffer _lightingCommandBuffer;
-    Mesh mesh
-    {
-        get
-        {
-            var mf = GetComponent<MeshFilter>();
-            if (mf) return mf.sharedMesh;
-            else return null;
+
+    // Getters
+    public bool shareMaterialProperties {
+        get { return _sharePlaneProperties; } 
+        set {
+            Vector4 pv = GetPlaneVector();
+            bool uws = GetUseWorldSpace();
+
+            _sharePlaneProperties = value;
+            _matPropBlock.Clear();
+
+            planeVector = pv;
+            useWorldSpace = uws;
         }
     }
 
-    // Getters
+    public bool useWorldSpace {
+        get { return GetUseWorldSpace(); }
+        set { SetUseWorldSpace(value); }
+    }
+
     public Vector3 planeNormal {
-        get { return new Vector3(planeVector.x, planeVector.y, planeVector.z); }
+        get { return new Vector3(_planeVector.x, _planeVector.y, _planeVector.z); }
         set {
             Vector3 pp = planePoint;
-            planeVector.x = value.x;
-            planeVector.y = value.y;
-            planeVector.z = value.z;
+            _planeVector.x = value.x;
+            _planeVector.y = value.y;
+            _planeVector.z = value.z;
             planePoint = pp;
         }
     }
 
     public Vector3 planePoint {
-        get { return planeNormal * planeVector.w; }
-        set { planeVector.w = Vector3.Dot(planeNormal, value); }
+        get { return planeNormal * _planeVector.w; }
+        set { _planeVector.w = Vector3.Dot(planeNormal, value); }
     }
 
+    public Vector4 planeVector {
+        get { return GetPlaneVector(); }
+        set { SetPlaneVector(new Vector3(value.x, value.y, value.z), value.w); }
+    }
+
+    Mesh mesh {
+        get {
+            var mf = GetComponent<MeshFilter>();
+            if (mf) return mf.sharedMesh;
+            else return null;
+        }
+    }
 
 
     // For Shadows
@@ -87,8 +113,8 @@ public class ClippedRenderer : MonoBehaviour {
         {
             // regenerate the command buffer
             _matPropBlock.SetColor("_Color", material.color);
-            _matPropBlock.SetFloat("_UseWorldSpace", useWorldSpace ? 1 : 0);
-            _matPropBlock.SetVector("_PlaneVector", planeVector);
+            _matPropBlock.SetFloat("_UseWorldSpace", _useWorldSpace ? 1 : 0);
+            _matPropBlock.SetVector("_PlaneVector", _planeVector);
 
             _lightingCommandBuffer.Clear();
             _lightingCommandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
@@ -113,8 +139,6 @@ public class ClippedRenderer : MonoBehaviour {
     #endregion
 
     #region Material Helpers
-    bool _sharePlaneProperties = false;
-
     void SetPlaneVector(Vector3? normal = null, float? dist = null) {
         Vector4 currVec = GetPlaneVector();
         normal = (normal ?? new Vector3(currVec.x, currVec.y, currVec.z)).normalized;
@@ -150,22 +174,22 @@ public class ClippedRenderer : MonoBehaviour {
 
         // Set shader attributes
         _matPropBlock.SetColor("_Color", material.color);
-        _matPropBlock.SetFloat("_UseWorldSpace", useWorldSpace ? 1 : 0);
-        _matPropBlock.SetVector("_PlaneVector", planeVector);
+        _matPropBlock.SetFloat("_UseWorldSpace", _useWorldSpace ? 1 : 0);
+        _matPropBlock.SetVector("_PlaneVector", _planeVector);
         _commandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
 
         // Create the clip plane position here because it may have moved between lateUpdate and now
         // TODO: We could cache it between draws, though, and only update it if the vector has changed
         // Get the plane data from the material
         Vector3 norm = planeNormal.normalized;
-        float dist = planeVector.w;
+        float dist = _planeVector.w;
 
         // Position the clip surface
         var t = transform;
         var p = t.position + norm * dist - Vector3.Project(t.position, norm);
         var r = Quaternion.LookRotation(-new Vector3(norm.x, norm.y, norm.z));
         
-        if (!useWorldSpace)
+        if (!_useWorldSpace)
         {
             norm = transform.localToWorldMatrix * norm;
             dist *= norm.magnitude;
@@ -193,7 +217,7 @@ public class ClippedRenderer : MonoBehaviour {
         Vector3 norm = planeNormal;
         Vector3 point = planePoint;
 
-        if (useWorldSpace) {
+        if (_useWorldSpace) {
             // adjust the plane position so it's centered around
             // the mesh in world space
             float projDist = Vector3.Dot(norm, transform.position);
