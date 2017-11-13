@@ -154,6 +154,8 @@ public class ClippedRenderer : MonoBehaviour {
     {
         if (mesh == null) return;
 
+        planeNormal = planeNormal.normalized;
+
         Vector3 norm = planeNormal;
         Vector3 point = planePoint;
 
@@ -163,8 +165,11 @@ public class ClippedRenderer : MonoBehaviour {
             Vector3 delta = transform.position - norm * projDist;
             point += delta;
 
+            norm = norm.normalized;
+            Gizmos.matrix = Matrix4x4.TRS(point, Quaternion.LookRotation(new Vector3(norm.x, norm.y, norm.z)), Vector3.one);
+
         } else {
-            Gizmos.matrix = transform.localToWorldMatrix;
+            Gizmos.matrix = transform.localToWorldMatrix * Matrix4x4.TRS(point, Quaternion.LookRotation(new Vector3(norm.x, norm.y, norm.z)), Vector3.one);
         }
 
         float planeSize = mesh.bounds.extents.magnitude * 2;
@@ -172,13 +177,11 @@ public class ClippedRenderer : MonoBehaviour {
         Color c = Gizmos.color;
         c.a = 0.25f;
         Gizmos.color = c;
-        Gizmos.DrawCube(point + planeNormal * 0.0001f, new Vector3(1, 0, 1) * planeSize);
+        Gizmos.DrawCube(Vector3.forward * 0.0001f, new Vector3(1, 1, 0) * planeSize);
 
         c.a = 1;
         Gizmos.color = c;
-        Gizmos.DrawRay(point, norm);
-        Gizmos.DrawWireCube(point, new Vector3(1, 0, 1) * planeSize);
-
-
+        Gizmos.DrawRay(Vector3.zero, Vector3.forward);
+        Gizmos.DrawWireCube(Vector3.zero, new Vector3(1, 1, 0) * planeSize);
     }
 }
