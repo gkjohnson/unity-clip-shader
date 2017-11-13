@@ -106,8 +106,9 @@ public class ClippedRenderer : MonoBehaviour {
         Draw()
 #endif
     }
-#endregion
+    #endregion
 
+    #region Visuals
     void Draw()
     {
         if (mesh == null) return;
@@ -186,4 +187,5 @@ public class ClippedRenderer : MonoBehaviour {
         Gizmos.DrawRay(Vector3.zero, Vector3.forward);
         Gizmos.DrawWireCube(Vector3.zero, new Vector3(1, 1, 0) * planeSize);
     }
+    #endregion
 }
