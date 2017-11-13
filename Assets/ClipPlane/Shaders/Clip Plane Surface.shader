@@ -11,13 +11,15 @@ Shader "Hidden/Clip Plane/Surface"
 
         Pass
         {
-        
+			Cull Off
+
             Stencil
             {
                 Ref 0
                 Comp NotEqual
                 Pass Replace
                 Fail Replace
+				ZFail Replace
             }
             
             CGPROGRAM
