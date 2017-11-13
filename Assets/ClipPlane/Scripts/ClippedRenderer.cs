@@ -210,10 +210,7 @@ public class ClippedRenderer : MonoBehaviour {
     void OnDrawGizmos()
     {
         if (mesh == null) return;
-
-        // TODO: Enforce this elsewhere
-        planeNormal = planeNormal.normalized;
-
+        
         Vector3 norm = planeNormal;
         Vector3 point = planePoint;
 
