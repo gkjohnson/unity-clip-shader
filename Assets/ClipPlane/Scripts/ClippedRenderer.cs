@@ -78,6 +78,7 @@ public class ClippedRenderer : MonoBehaviour {
             // regenerate the command buffer
             _matPropBlock.SetColor("_Color", material.color);
             _matPropBlock.SetFloat("_UseWorldSpace", useWorldSpace ? 1 : 0);
+            _matPropBlock.SetVector("_PlaneVector", planeVector);
 
             _lightingCommandBuffer.Clear();
             _lightingCommandBuffer.DrawMesh(meshFilter.sharedMesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
