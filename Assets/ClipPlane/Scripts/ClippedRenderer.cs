@@ -150,30 +150,32 @@ public class ClippedRenderer : MonoBehaviour {
         Graphics.ExecuteCommandBuffer(_commandBuffer);
     }
 
+    // Visualize the clip plane normal and position
     void OnDrawGizmosSelected()
     {
         if (mesh == null) return;
 
+        // TODO: Enforce this elsewhere
         planeNormal = planeNormal.normalized;
 
         Vector3 norm = planeNormal;
         Vector3 point = planePoint;
 
         if (useWorldSpace) {
-
+            // adjust the plane position so it's centered around
+            // the mesh in world space
             float projDist = Vector3.Dot(norm, transform.position);
             Vector3 delta = transform.position - norm * projDist;
             point += delta;
-
-            norm = norm.normalized;
+            
             Gizmos.matrix = Matrix4x4.TRS(point, Quaternion.LookRotation(new Vector3(norm.x, norm.y, norm.z)), Vector3.one);
-
         } else {
             Gizmos.matrix = transform.localToWorldMatrix * Matrix4x4.TRS(point, Quaternion.LookRotation(new Vector3(norm.x, norm.y, norm.z)), Vector3.one);
         }
 
         float planeSize = mesh.bounds.extents.magnitude * 2;
 
+        // Draw box plane and normal
         Color c = Gizmos.color;
         c.a = 0.25f;
         Gizmos.color = c;
