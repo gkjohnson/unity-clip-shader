@@ -103,20 +103,13 @@ public class ClippedRenderer : MonoBehaviour {
         for (int i = 0; i < _prevLights.Count; i++) _prevLights[i].RemoveCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
         _prevLights.Clear();
         
-        // If we're going to cash shadows
-        if (castShadows && shadowCastingLights != null)
-        {
-            // regenerate the command buffer
-            _matPropBlock.SetColor("_Color", material.color);
-            _matPropBlock.SetFloat("_UseWorldSpace", useWorldSpace ? 1 : 0);
-            _matPropBlock.SetVector("_PlaneVector", planeVector);
-
+        // If we're going to cast shadows
+        if (castShadows && shadowCastingLights != null) {
             _lightingCommandBuffer.Clear();
             _lightingCommandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
 
             // add the shadow drawing
-            for (int i = 0; i < shadowCastingLights.Length; i++)
-            {
+            for (int i = 0; i < shadowCastingLights.Length; i++) {
                 shadowCastingLights[i].AddCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
                 _prevLights.Add(shadowCastingLights[i]);
             }
@@ -169,8 +162,6 @@ public class ClippedRenderer : MonoBehaviour {
 
         // Set shader attributes
         _matPropBlock.SetColor("_Color", material.color);
-        _matPropBlock.SetFloat("_UseWorldSpace", useWorldSpace ? 1 : 0);
-        _matPropBlock.SetVector("_PlaneVector", planeVector);
         _commandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
 
         // Create the clip plane position here because it may have moved between lateUpdate and now
