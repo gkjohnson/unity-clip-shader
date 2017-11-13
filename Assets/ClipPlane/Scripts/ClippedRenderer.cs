@@ -127,6 +127,8 @@ public class ClippedRenderer : MonoBehaviour {
     #endregion
 
     #region Material Helpers
+    // Helpers for setting the material properties depending
+    // on whether or not we're using the material property block or not
     void SetPlaneVector(Vector3? normal = null, float? dist = null) {
         Vector4 currVec = GetPlaneVector();
         normal = (normal ?? new Vector3(currVec.x, currVec.y, currVec.z)).normalized;
@@ -167,10 +169,7 @@ public class ClippedRenderer : MonoBehaviour {
         _matPropBlock.SetColor("_Color", material.color);
         _commandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
 
-        // Create the clip plane position here because it may have moved between lateUpdate and now
-        // TODO: We could cache it between draws, though, and only update it if the vector has changed
-        // Get the plane data from the material
-        Vector3 norm = planeNormal.normalized;
+        Vector3 norm = planeNormal;
         float dist = planeVector.w;
 
         // Position the clip surface
@@ -191,7 +190,6 @@ public class ClippedRenderer : MonoBehaviour {
         var max = Mathf.Max(bounds.max.x * t.localScale.x, bounds.max.y * t.localScale.y, bounds.max.z * t.localScale.z) * 4;
         var s = Vector3.one * max;
         _commandBuffer.DrawMesh(_clipSurface, Matrix4x4.TRS(p, r, s), _clipSurfaceMat, 0, 0, _matPropBlock);
-
 
         // Update Shadow CommandBuffer
         _lightingCommandBuffer.Clear();
