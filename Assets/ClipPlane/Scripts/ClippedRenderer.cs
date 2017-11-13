@@ -246,20 +246,17 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     #region Serialization
     [SerializeField] Vector4 serializable_planeVector;
     [SerializeField] bool serializable_useWorldSpace;
-    void ISerializationCallbackReceiver.OnBeforeSerialize()
-    {
+    void ISerializationCallbackReceiver.OnBeforeSerialize() {
         serializable_planeVector = planeVector;
         serializable_useWorldSpace = useWorldSpace;
 
     }
 
-    void ISerializationCallbackReceiver.OnAfterDeserialize()
-    {
+    void ISerializationCallbackReceiver.OnAfterDeserialize() {
         // We can't create a materialPropertyBlock here, so set the values in "OnEnable" instead
     }
     
-    void ApplySerializedValues()
-    {
+    void ApplySerializedValues() {
         if (!_shareMaterialProperties)
         {
             planeVector = serializable_planeVector;

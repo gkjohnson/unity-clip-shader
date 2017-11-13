@@ -3,8 +3,7 @@ using UnityEditor;
 
 [CustomEditor(typeof(ClippedRenderer))]
 public class ClippedRendererEditor : Editor {
-    public override void OnInspectorGUI()
-    {
+    public override void OnInspectorGUI() {
         serializedObject.Update();
         ClippedRenderer cr = (ClippedRenderer)target;
 
