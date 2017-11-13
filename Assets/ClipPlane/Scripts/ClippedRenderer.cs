@@ -149,4 +149,31 @@ public class ClippedRenderer : MonoBehaviour {
         
         Graphics.ExecuteCommandBuffer(_commandBuffer);
     }
+
+    void OnDrawGizmosSelected()
+    {
+        if (mesh == null) return;
+
+        Vector3 norm = planeNormal;
+        Vector3 point = planePoint;
+
+        if (!useWorldSpace)
+        {
+            Gizmos.matrix = transform.localToWorldMatrix;
+        }
+
+        float planeSize = mesh.bounds.extents.magnitude * 2;
+
+        Color c = Gizmos.color;
+        c.a = 0.25f;
+        Gizmos.color = c;
+        Gizmos.DrawCube(point + planeNormal * 0.0001f, new Vector3(1, 0, 1) * planeSize);
+
+        c.a = 1;
+        Gizmos.color = c;
+        Gizmos.DrawRay(point, norm);
+        Gizmos.DrawWireCube(point, new Vector3(1, 0, 1) * planeSize);
+
+
+    }
 }
