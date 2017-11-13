@@ -36,7 +36,13 @@ public class ClippedRenderer : MonoBehaviour {
     MaterialPropertyBlock _matPropBlock;
     CommandBuffer _commandBuffer;
     CommandBuffer _lightingCommandBuffer;
-    MeshFilter meshFilter { get { return GetComponent<MeshFilter>(); } }
+    Mesh mesh {
+        get {
+            var mf = GetComponent<MeshFilter>();
+            if (mf) return mf.sharedMesh;
+            else return null;
+        }
+    }
 
     // For Shadows
     public Light[] shadowCastingLights;     // the lights to render shadows to
@@ -81,7 +87,7 @@ public class ClippedRenderer : MonoBehaviour {
             _matPropBlock.SetVector("_PlaneVector", planeVector);
 
             _lightingCommandBuffer.Clear();
-            _lightingCommandBuffer.DrawMesh(meshFilter.sharedMesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
+            _lightingCommandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
 
             // add the shadow drawing
             for (int i = 0; i < shadowCastingLights.Length; i++)
@@ -104,6 +110,8 @@ public class ClippedRenderer : MonoBehaviour {
 
     void Draw()
     {
+        if (mesh == null) return;
+
         // TODO: We should only have to clear the commandbuffer
         // if something breaking has changed! Same with the shadow commandbuffer
         _commandBuffer.Clear();
@@ -112,7 +120,7 @@ public class ClippedRenderer : MonoBehaviour {
         _matPropBlock.SetColor("_Color", material.color);
         _matPropBlock.SetFloat("_UseWorldSpace", useWorldSpace ? 1 : 0);
         _matPropBlock.SetVector("_PlaneVector", planeVector);
-        _commandBuffer.DrawMesh(meshFilter.sharedMesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
+        _commandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material, 0, 0, _matPropBlock);
 
         // Create the clip plane position here because it may have moved between lateUpdate and now
         // TODO: We could cache it between draws, though, and only update it if the vector has changed
@@ -134,7 +142,7 @@ public class ClippedRenderer : MonoBehaviour {
             p = t.position + norm.normalized * dist;
         }
         
-        var bounds = meshFilter.sharedMesh.bounds;
+        var bounds = mesh.bounds;
         var max = Mathf.Max(bounds.max.x * t.localScale.x, bounds.max.y * t.localScale.y, bounds.max.z * t.localScale.z) * 4;
         var s = Vector3.one * max;
         _commandBuffer.DrawMesh(_clipSurface, Matrix4x4.TRS(p, r, s), _clipSurfaceMat, 0, 0, _matPropBlock);
