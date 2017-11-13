@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine.Rendering;
 using System;
 
+[RequireComponent(typeof(Renderer))]
 [ExecuteInEditMode]
 public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
 
@@ -16,30 +17,34 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     // Private variables
     [SerializeField]
     bool _shareMaterialProperties = true;
-    bool _dirty = true;
 
     // For Drawing
-    public Material material = null;            // the material to render with
     MaterialPropertyBlock _matPropBlock;
     CommandBuffer _commandBuffer;
-    CommandBuffer _lightingCommandBuffer;
-
-    // For Shadows
-    [SerializeField]
-    List<Light> _shadowCastingLights;     // the lights to render shadows to
-    bool _castShadows = true;         // whether or not this object should render shadows
 
     // Getters
-    MaterialPropertyBlock matPropBlock {
-        get { return _matPropBlock = _matPropBlock == null ? new MaterialPropertyBlock() : _matPropBlock; } 
+    Mesh clipSurface {
+        get {
+            if (_clipSurface == null) {
+                GameObject go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                _clipSurface = go.GetComponent<MeshFilter>().sharedMesh;
+                DestroyImmediate(go);
+            }
+            return _clipSurface;
+        }
     }
 
-    public bool castShadows {
-        get { return _castShadows; }
-        set {
-            _castShadows = value;
-            UpdateShadowBuffers();
-        }
+    MaterialPropertyBlock matPropBlock {
+        get { return _matPropBlock = _matPropBlock == null ? new MaterialPropertyBlock() : _matPropBlock; }
+    }
+
+    MeshRenderer renderer {
+        get { return GetComponent<MeshRenderer>(); }
+    }
+
+    public Material material {
+        get { return renderer.sharedMaterial; }
+        set { renderer.sharedMaterial = value; }
     }
 
     public bool shareMaterialProperties {
@@ -49,6 +54,7 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
             bool uws = GetUseWorldSpace();
 
             _shareMaterialProperties = value;
+            
             matPropBlock.Clear();
 
             planeVector = pv;
@@ -92,34 +98,19 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     }
 
     #region Life Cycle
+
     void OnEnable() {
         ApplySerializedValues();
 
         if (_clipSurfaceMat == null) _clipSurfaceMat = new Material(Shader.Find(CLIP_SURFACE_SHADER));
-
         if (_commandBuffer == null) _commandBuffer = new CommandBuffer();
 
-        if (_lightingCommandBuffer == null) _lightingCommandBuffer = new CommandBuffer();
-
-        if (_clipSurface == null)
-        {
-            GameObject go = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            _clipSurface = go.GetComponent<MeshFilter>().sharedMesh;
-            DestroyImmediate(go);
-        }
     }
 
     // clear shadows on disable
-    void OnDisable() {
-        UpdateShadowBuffers();
-    }
-
-    void OnWillRenderObject() {
-        if (_dirty) UpdateCommandBuffers();
-        _dirty = false;
-    }
-
     void OnRenderObject() {
+        UpdateCommandBuffers();
+        
 #if UNITY_EDITOR
         if (Camera.current.name != "Preview Scene Camera") Draw();
 #else
@@ -136,11 +127,13 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
         normal = (normal ?? new Vector3(currVec.x, currVec.y, currVec.z)).normalized;
         dist = dist ?? currVec.w;
 
+        renderer.GetPropertyBlock(matPropBlock);
+
         Vector4 newVec = new Vector4(normal.Value.x, normal.Value.y, normal.Value.z, dist.Value);
         if (_shareMaterialProperties) material.SetVector(PLANE_VECTOR_PROPERTY, newVec);
         else matPropBlock.SetVector(PLANE_VECTOR_PROPERTY, newVec);
 
-        _dirty = true;
+        renderer.SetPropertyBlock(matPropBlock);
     }
 
     Vector4 GetPlaneVector() {
@@ -148,48 +141,16 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     }
     
     void SetUseWorldSpace(bool ws) {
+        renderer.GetPropertyBlock(matPropBlock);
+
         if (_shareMaterialProperties) material.SetFloat(USE_WORLD_SPACE_PROPERTY, ws ? 1 : 0);
         else matPropBlock.SetFloat(USE_WORLD_SPACE_PROPERTY, ws ? 1 : 0);
 
-        _dirty = true;
+        renderer.SetPropertyBlock(matPropBlock);
     }
 
     bool GetUseWorldSpace() {
         return (_shareMaterialProperties ? material.GetFloat(USE_WORLD_SPACE_PROPERTY) : matPropBlock.GetFloat(USE_WORLD_SPACE_PROPERTY)) == 1;
-    }
-    #endregion
-
-    #region Shadows
-    public void SetLights(IEnumerable<Light> lights) {
-        ClearLights();
-        _shadowCastingLights.AddRange(lights);
-        UpdateShadowBuffers();
-    }
-
-    public void ClearLights() {
-        ClearShadowBuffers();
-        _shadowCastingLights.Clear();
-    }
-
-    // Update the command Buffers if needed
-    void UpdateShadowBuffers() {
-        ClearShadowBuffers();
-        if (enabled && _castShadows) ApplyShadowBuffers();
-    }
-    
-    // Add the shadow 
-    void ApplyShadowBuffers() {
-        UpdateCommandBuffers();
-
-        // add the shadow drawing
-        for (int i = 0; i < _shadowCastingLights.Count; i++) {
-            _shadowCastingLights[i].AddCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
-        }
-    }
-
-    // Clears the command buffers for the lights casting shadows
-    void ClearShadowBuffers() {
-        for (int i = 0; i < _shadowCastingLights.Count; i++) _shadowCastingLights[i].RemoveCommandBuffer(LightEvent.AfterShadowMapPass, _lightingCommandBuffer);
     }
     #endregion
 
@@ -201,7 +162,7 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
 
         // Set shader attributes
         matPropBlock.SetColor("_Color", material.color);
-        _commandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material, 0, 0, matPropBlock);
+        _commandBuffer.DrawRenderer(renderer, material, 0, 0);
 
         Vector3 norm = planeNormal;
         float dist = planeVector.w;
@@ -223,11 +184,7 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
         var bounds = mesh.bounds;
         var max = Mathf.Max(bounds.max.x * t.localScale.x, bounds.max.y * t.localScale.y, bounds.max.z * t.localScale.z) * 4;
         var s = Vector3.one * max;
-        _commandBuffer.DrawMesh(_clipSurface, Matrix4x4.TRS(p, r, s), _clipSurfaceMat, 0, 0, matPropBlock);
-
-        // Update Shadow CommandBuffer
-        _lightingCommandBuffer.Clear();
-        _lightingCommandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material, 0, 0, matPropBlock);
+        _commandBuffer.DrawMesh(clipSurface, Matrix4x4.TRS(p, r, s), _clipSurfaceMat, 0, 0, matPropBlock);
     }
 
     // Drwa the current target
@@ -237,7 +194,7 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     }
 
     // Visualize the clip plane normal and position
-    void OnDrawGizmos() {
+    void OnDrawGizmosSelected() {
         if (mesh == null) return;
         
         Vector3 norm = planeNormal;
