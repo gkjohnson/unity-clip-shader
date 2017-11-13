@@ -18,7 +18,6 @@ public class ClippedRendererEditor : Editor {
         EditorGUILayout.LabelField("Plane", EditorStyles.boldLabel);
         cr.planeNormal = EditorGUILayout.Vector3Field("Normal", cr.planeNormal);
         cr.planePoint = EditorGUILayout.Vector3Field("Point", cr.planePoint);
-
         cr.planeVector = EditorGUILayout.Vector4Field("Vector", cr.planeVector);
 
         EditorGUILayout.LabelField("Shadows", EditorStyles.boldLabel);
