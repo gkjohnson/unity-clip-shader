@@ -12,7 +12,8 @@ public class ClippedRendererEditor : Editor {
 
         EditorGUI.BeginChangeCheck();
         cr.material = (Material)EditorGUILayout.ObjectField("Material", cr.material, typeof(Material), false);
-        
+        cr.clipMaterial = (Material)EditorGUILayout.ObjectField("Clip Cap Material", serializedObject.FindProperty("_clipMaterial").objectReferenceValue, typeof(Material), false);
+
         EditorGUILayout.LabelField("Properties", EditorStyles.boldLabel);
         cr.shareMaterialProperties = EditorGUILayout.Toggle(new GUIContent("Share Properties", "Whether the script should set the properties on the original material"), cr.shareMaterialProperties);
         cr.useWorldSpace = EditorGUILayout.Toggle(new GUIContent("Use World Space", "Draw the clip plane in world space"), cr.useWorldSpace);

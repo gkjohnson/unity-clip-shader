@@ -15,15 +15,20 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
 
     // Private variables
     [SerializeField]
-    bool _shareMaterialProperties = true;
-    bool _dirty = true;
+    bool _shareMaterialProperties = true;   // whether the changes to the plane should be reflected on the original material
+    bool _dirty = true;                     // whether the commandbuffer needs to be recreated
 
     // For Drawing
+
+    // the material to use for the clip surface. It is expected that this material
+    // will draw only in the Stencil != 0 pixels and reset them to 0
     [SerializeField]
     Material _clipMaterial;
+
+    // the material to use in place of the clipMaterial if it's not specified
     Material _standinClipMaterial;
 
-    MaterialPropertyBlock _matPropBlock;
+    MaterialPropertyBlock _matPropBlock;    // material property block for use when not sharing material attributes
     CommandBuffer _commandBuffer;
 
     // Getters
@@ -35,7 +40,7 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
 
         set {
             _dirty = true;
-            if (value != null && _standinClipMaterial != null) Destroy(_standinClipMaterial);
+            if (value != null && _standinClipMaterial != null) DestroyImmediate(_standinClipMaterial);
             _clipMaterial = value;
         }
     }
@@ -55,13 +60,13 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
         get { return _matPropBlock = _matPropBlock == null ? new MaterialPropertyBlock() : _matPropBlock; }
     }
 
-    MeshRenderer renderer {
+    MeshRenderer meshRenderer {
         get { return GetComponent<MeshRenderer>(); }
     }
 
     public Material material {
-        get { return renderer.sharedMaterial; }
-        set { renderer.sharedMaterial = value; }
+        get { return meshRenderer.sharedMaterial; }
+        set { meshRenderer.sharedMaterial = value; }
     }
 
     public bool shareMaterialProperties {
@@ -115,22 +120,23 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     }
 
     #region Life Cycle
-
     void OnEnable() {
         _dirty = true;
         ApplySerializedValues();
         if (_commandBuffer == null) _commandBuffer = new CommandBuffer();
     }
 
+    // We control the shadow casting mode, so if this script gets disabled,
+    // set it back to a reasonable value
     private void OnDisable() {
-        if (renderer.shadowCastingMode == ShadowCastingMode.ShadowsOnly) renderer.shadowCastingMode = ShadowCastingMode.On;
+        if (meshRenderer.shadowCastingMode == ShadowCastingMode.ShadowsOnly) meshRenderer.shadowCastingMode = ShadowCastingMode.On;
     }
-
-    // clear shadows on disable
+    
+    // Rendering
     void OnRenderObject() {
         UpdateCommandBuffers();
         if (_standinClipMaterial) _standinClipMaterial.color = material.color;
-        if (renderer.shadowCastingMode != ShadowCastingMode.Off) renderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+        if (meshRenderer.shadowCastingMode != ShadowCastingMode.Off) meshRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
 
 #if UNITY_EDITOR
         if (Camera.current.name != "Preview Scene Camera") Draw();
@@ -148,13 +154,13 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
         normal = (normal ?? new Vector3(currVec.x, currVec.y, currVec.z)).normalized;
         dist = dist ?? currVec.w;
 
-        renderer.GetPropertyBlock(matPropBlock);
+        meshRenderer.GetPropertyBlock(matPropBlock);
 
         Vector4 newVec = new Vector4(normal.Value.x, normal.Value.y, normal.Value.z, dist.Value);
         if (_shareMaterialProperties) material.SetVector(PLANE_VECTOR_PROPERTY, newVec);
         else matPropBlock.SetVector(PLANE_VECTOR_PROPERTY, newVec);
 
-        renderer.SetPropertyBlock(matPropBlock);
+        meshRenderer.SetPropertyBlock(matPropBlock);
     }
 
     Vector4 GetPlaneVector() {
@@ -162,12 +168,12 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     }
     
     void SetUseWorldSpace(bool ws) {
-        renderer.GetPropertyBlock(matPropBlock);
+        meshRenderer.GetPropertyBlock(matPropBlock);
 
         if (_shareMaterialProperties) material.SetFloat(USE_WORLD_SPACE_PROPERTY, ws ? 1 : 0);
         else matPropBlock.SetFloat(USE_WORLD_SPACE_PROPERTY, ws ? 1 : 0);
 
-        renderer.SetPropertyBlock(matPropBlock);
+        meshRenderer.SetPropertyBlock(matPropBlock);
     }
 
     bool GetUseWorldSpace() {
@@ -185,7 +191,7 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
         _commandBuffer.Clear();
 
         // Set shader attributes
-        _commandBuffer.DrawRenderer(renderer, material, 0, 0);
+        _commandBuffer.DrawRenderer(meshRenderer, material, 0, 0);
 
         Vector3 norm = planeNormal;
         float dist = planeVector.w;
@@ -208,9 +214,13 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
         var max = Mathf.Max(bounds.max.x * t.localScale.x, bounds.max.y * t.localScale.y, bounds.max.z * t.localScale.z) * 4;
         var s = Vector3.one * max;
         _commandBuffer.DrawMesh(clipSurface, Matrix4x4.TRS(p, r, s), clipMaterial, 0, 0, matPropBlock);
+
+        // force the material property block on the renderer to update
+        planeVector = planeVector;
+        useWorldSpace = useWorldSpace;
     }
 
-    // Drwa the current target
+    // Draw the current target
     void Draw() {
         if (mesh == null) return;
         Graphics.ExecuteCommandBuffer(_commandBuffer);
@@ -253,6 +263,7 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     #endregion
 
     #region Serialization
+    // Serialize the material property block values manually
     [SerializeField] Vector4 serializable_planeVector;
     [SerializeField] bool serializable_useWorldSpace;
     void ISerializationCallbackReceiver.OnBeforeSerialize() {
