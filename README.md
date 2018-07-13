@@ -5,7 +5,7 @@ Unity shader and scripts for rendering solid geometry clipped by a plane
 
 ## Use
 
-Draws the geometry with a double sided stencil pass and draws a quad afterward to give the illusion of solid geometry.
+Draws the geometry with a double sided stencil pass and draws a quad afterward to give the illusion of solid geometry. The geometry must be manifold or water-tight with no duplicate triangles or edges.
 
 Add a `ClipRenderer` component to the GameObject to be rendered, and attach a `Clip Plane/Basic` material. The `ClipRenderer` component should be considered a replacement for the built-in `Renderer` component.
 
