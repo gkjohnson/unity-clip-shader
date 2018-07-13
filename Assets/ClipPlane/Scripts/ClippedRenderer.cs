@@ -34,7 +34,7 @@ public class ClippedRenderer : MonoBehaviour, ISerializationCallbackReceiver {
     // Getters
     public Material clipMaterial {
         get {
-            if (_clipMaterial == null) _standinClipMaterial = new Material(Shader.Find(CLIP_SURFACE_SHADER));            
+            if (_clipMaterial == null && _standinClipMaterial == null) _standinClipMaterial = new Material(Shader.Find(CLIP_SURFACE_SHADER));            
             return _clipMaterial != null ? _clipMaterial : _standinClipMaterial;
         }
 
